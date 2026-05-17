@@ -31,13 +31,14 @@ const BALANCE = {
     mult:   3,
   },
 
-  // Tier-3 additive upgrade ("T+++"). Each purchase adds (delta × clickPowerMult) to per-tap,
-  // running in parallel with T+ but with a much bigger base delta.
-  //   clickHyperDelta = delta × clickPowerMult   (so T++ retroactively boosts T+++ too)
-  //   perTap += clickHyperDelta × clickHyperLevel
-  //   cost(level) = ceil(base * mult ^ level)
+  // Tier-3 upgrade ("T+++"). Each purchase adds `delta` to clickPowerUpgrade.factor,
+  // growing the multiplier that T++ raises to its level. So T+++ has no visible effect
+  // until at least one T++ is bought, but compounds aggressively at high T++.
+  //   effectiveFactor = clickPowerUpgrade.factor + delta × clickHyperLevel
+  //   clickPowerMult  = effectiveFactor ^ clickPowerLevel
+  //   cost(level)     = ceil(base * mult ^ level)
   clickHyperUpgrade: {
-    delta: 10,
+    delta: 0.1,
     base:  25000,
     mult:  4,
   },
@@ -58,9 +59,10 @@ const BALANCE = {
     mult:   3,
   },
 
-  // Tier-3 additive upgrade for idle ("I+++"). Each purchase adds (delta × idlePowerMult) to per-sec.
+  // Tier-3 upgrade for idle ("I+++"). Each purchase adds `delta` to idlePowerUpgrade.factor.
+  // Same mechanic as clickHyperUpgrade — compounds via I++ exponent.
   idleHyperUpgrade: {
-    delta: 2,
+    delta: 0.1,
     base:  50000,
     mult:  4,
   },

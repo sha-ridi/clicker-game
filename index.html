@@ -219,8 +219,8 @@
       <div class="stats">
         <div id="stat-per-tap">+1 per tap</div>
         <div id="stat-tb">+0.5 per T+</div>
-        <div id="stat-tbm">*1 per T++</div>
-        <div id="stat-tbmm">+10 per T+++</div>
+        <div id="stat-tbm">*1.5 per T++</div>
+        <div id="stat-tbmm">+0.1 per T+++</div>
       </div>
       <button id="upgrade-click" class="upgrade-button">T+ (10)</button>
       <button id="upgrade-click-power" class="upgrade-button">T++ (500)</button>
@@ -232,8 +232,8 @@
       <div class="stats">
         <div id="stat-per-sec">+0 per sec</div>
         <div id="stat-ib">+0.1 per I+</div>
-        <div id="stat-ibm">*1 per I++</div>
-        <div id="stat-ibmm">+2 per I+++</div>
+        <div id="stat-ibm">*1.5 per I++</div>
+        <div id="stat-ibmm">+0.1 per I+++</div>
       </div>
       <button id="upgrade-idle" class="upgrade-button">I+ (50)</button>
       <button id="upgrade-idle-power" class="upgrade-button">I++ (5000)</button>
@@ -316,22 +316,20 @@
       return n.toExponential(2).replace('e+', 'e');
     }
 
+    function getClickPowerFactor() {
+      return BALANCE.clickPowerUpgrade.factor + BALANCE.clickHyperUpgrade.delta * state.upgrades.clickHyper;
+    }
+
     function getClickPowerMult() {
-      return Math.pow(BALANCE.clickPowerUpgrade.factor, state.upgrades.clickPower);
+      return Math.pow(getClickPowerFactor(), state.upgrades.clickPower);
     }
 
     function getClickDelta() {
       return BALANCE.clickUpgrade.delta * getClickPowerMult();
     }
 
-    function getClickHyperDelta() {
-      return BALANCE.clickHyperUpgrade.delta * getClickPowerMult();
-    }
-
     function getPerClick() {
-      return BALANCE.startingPerTap
-        + getClickDelta() * state.upgrades.click
-        + getClickHyperDelta() * state.upgrades.clickHyper;
+      return BALANCE.startingPerTap + getClickDelta() * state.upgrades.click;
     }
 
     function getClickUpgradeCost() {
@@ -349,22 +347,20 @@
       return Math.ceil(base * Math.pow(mult, state.upgrades.clickHyper));
     }
 
+    function getIdlePowerFactor() {
+      return BALANCE.idlePowerUpgrade.factor + BALANCE.idleHyperUpgrade.delta * state.upgrades.idleHyper;
+    }
+
     function getIdlePowerMult() {
-      return Math.pow(BALANCE.idlePowerUpgrade.factor, state.upgrades.idlePower);
+      return Math.pow(getIdlePowerFactor(), state.upgrades.idlePower);
     }
 
     function getIdleDelta() {
       return BALANCE.idleUpgrade.delta * getIdlePowerMult();
     }
 
-    function getIdleHyperDelta() {
-      return BALANCE.idleHyperUpgrade.delta * getIdlePowerMult();
-    }
-
     function getPerSec() {
-      return BALANCE.startingPerSec
-        + getIdleDelta() * state.upgrades.idle
-        + getIdleHyperDelta() * state.upgrades.idleHyper;
+      return BALANCE.startingPerSec + getIdleDelta() * state.upgrades.idle;
     }
 
     function getIdleUpgradeCost() {
@@ -401,13 +397,13 @@
 
       statPerTap.textContent = `+${fmt(getPerClick())} per tap`;
       statTB.textContent     = `+${fmt(getClickDelta())} per T+`;
-      statTBM.textContent    = `*${fmt(getClickPowerMult())} per T++`;
-      statTBMM.textContent   = `+${fmt(getClickHyperDelta())} per T+++`;
+      statTBM.textContent    = `*${fmt(getClickPowerFactor())} per T++`;
+      statTBMM.textContent   = `+${fmt(BALANCE.clickHyperUpgrade.delta)} per T+++`;
 
       statPerSec.textContent = `+${fmt(getPerSec())} per sec`;
       statIB.textContent     = `+${fmt(getIdleDelta())} per I+`;
-      statIBM.textContent    = `*${fmt(getIdlePowerMult())} per I++`;
-      statIBMM.textContent   = `+${fmt(getIdleHyperDelta())} per I+++`;
+      statIBM.textContent    = `*${fmt(getIdlePowerFactor())} per I++`;
+      statIBMM.textContent   = `+${fmt(BALANCE.idleHyperUpgrade.delta)} per I+++`;
 
       const tbCost = getClickUpgradeCost();
       upgradeBtn.textContent = `T+ (${fmt(tbCost)})`;
