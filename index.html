@@ -218,22 +218,26 @@
       <div class="column-header">[tap]</div>
       <div class="stats">
         <div id="stat-per-tap">+1 per tap</div>
-        <div id="stat-tb">+0.6 per T+</div>
+        <div id="stat-tb">+0.5 per T+</div>
         <div id="stat-tbm">*1 per T++</div>
+        <div id="stat-tbmm">+10 per T+++</div>
       </div>
       <button id="upgrade-click" class="upgrade-button">T+ (10)</button>
-      <button id="upgrade-click-power" class="upgrade-button">T++ (50)</button>
+      <button id="upgrade-click-power" class="upgrade-button">T++ (500)</button>
+      <button id="upgrade-click-hyper" class="upgrade-button">T+++ (25000)</button>
     </section>
 
     <section class="upgrade-column">
       <div class="column-header">[idle]</div>
       <div class="stats">
         <div id="stat-per-sec">+0 per sec</div>
-        <div id="stat-ib">+0.05 per I+</div>
+        <div id="stat-ib">+0.1 per I+</div>
         <div id="stat-ibm">*1 per I++</div>
+        <div id="stat-ibmm">+2 per I+++</div>
       </div>
-      <button id="upgrade-idle" class="upgrade-button">I+ (10)</button>
-      <button id="upgrade-idle-power" class="upgrade-button">I++ (100)</button>
+      <button id="upgrade-idle" class="upgrade-button">I+ (50)</button>
+      <button id="upgrade-idle-power" class="upgrade-button">I++ (5000)</button>
+      <button id="upgrade-idle-hyper" class="upgrade-button">I+++ (50000)</button>
     </section>
   </div>
 
@@ -272,13 +276,17 @@
     const statPerTap       = document.getElementById('stat-per-tap');
     const statTB           = document.getElementById('stat-tb');
     const statTBM          = document.getElementById('stat-tbm');
+    const statTBMM         = document.getElementById('stat-tbmm');
     const statPerSec       = document.getElementById('stat-per-sec');
     const statIB           = document.getElementById('stat-ib');
     const statIBM          = document.getElementById('stat-ibm');
+    const statIBMM         = document.getElementById('stat-ibmm');
     const upgradeBtn       = document.getElementById('upgrade-click');
     const upgradePowerBtn  = document.getElementById('upgrade-click-power');
+    const upgradeHyperBtn  = document.getElementById('upgrade-click-hyper');
     const upgradeIdleBtn   = document.getElementById('upgrade-idle');
     const upgradeIdlePowerBtn = document.getElementById('upgrade-idle-power');
+    const upgradeIdleHyperBtn = document.getElementById('upgrade-idle-hyper');
     const resetBtn         = document.getElementById('reset');
     const resetModal       = document.getElementById('reset-modal');
     const resetYesBtn      = document.getElementById('reset-yes');
@@ -316,8 +324,14 @@
       return BALANCE.clickUpgrade.delta * getClickPowerMult();
     }
 
+    function getClickHyperDelta() {
+      return BALANCE.clickHyperUpgrade.delta * getClickPowerMult();
+    }
+
     function getPerClick() {
-      return BALANCE.startingPerTap + getClickDelta() * state.upgrades.click;
+      return BALANCE.startingPerTap
+        + getClickDelta() * state.upgrades.click
+        + getClickHyperDelta() * state.upgrades.clickHyper;
     }
 
     function getClickUpgradeCost() {
@@ -330,6 +344,11 @@
       return Math.ceil(base * Math.pow(mult, state.upgrades.clickPower));
     }
 
+    function getClickHyperUpgradeCost() {
+      const { base, mult } = BALANCE.clickHyperUpgrade;
+      return Math.ceil(base * Math.pow(mult, state.upgrades.clickHyper));
+    }
+
     function getIdlePowerMult() {
       return Math.pow(BALANCE.idlePowerUpgrade.factor, state.upgrades.idlePower);
     }
@@ -338,8 +357,14 @@
       return BALANCE.idleUpgrade.delta * getIdlePowerMult();
     }
 
+    function getIdleHyperDelta() {
+      return BALANCE.idleHyperUpgrade.delta * getIdlePowerMult();
+    }
+
     function getPerSec() {
-      return BALANCE.startingPerSec + getIdleDelta() * state.upgrades.idle;
+      return BALANCE.startingPerSec
+        + getIdleDelta() * state.upgrades.idle
+        + getIdleHyperDelta() * state.upgrades.idleHyper;
     }
 
     function getIdleUpgradeCost() {
@@ -352,9 +377,17 @@
       return Math.ceil(base * Math.pow(mult, state.upgrades.idlePower));
     }
 
+    function getIdleHyperUpgradeCost() {
+      const { base, mult } = BALANCE.idleHyperUpgrade;
+      return Math.ceil(base * Math.pow(mult, state.upgrades.idleHyper));
+    }
+
     function resetState() {
       state.count = 0;
-      state.upgrades = { click: 0, clickPower: 0, idle: 0, idlePower: 0 };
+      state.upgrades = {
+        click: 0, clickPower: 0, clickHyper: 0,
+        idle: 0, idlePower: 0, idleHyper: 0,
+      };
       state.lastTick = Date.now();
     }
 
@@ -369,10 +402,12 @@
       statPerTap.textContent = `+${fmt(getPerClick())} per tap`;
       statTB.textContent     = `+${fmt(getClickDelta())} per T+`;
       statTBM.textContent    = `*${fmt(getClickPowerMult())} per T++`;
+      statTBMM.textContent   = `+${fmt(getClickHyperDelta())} per T+++`;
 
       statPerSec.textContent = `+${fmt(getPerSec())} per sec`;
       statIB.textContent     = `+${fmt(getIdleDelta())} per I+`;
       statIBM.textContent    = `*${fmt(getIdlePowerMult())} per I++`;
+      statIBMM.textContent   = `+${fmt(getIdleHyperDelta())} per I+++`;
 
       const tbCost = getClickUpgradeCost();
       upgradeBtn.textContent = `T+ (${fmt(tbCost)})`;
@@ -382,6 +417,10 @@
       upgradePowerBtn.textContent = `T++ (${fmt(tbmCost)})`;
       upgradePowerBtn.disabled = state.count < tbmCost;
 
+      const tbmmCost = getClickHyperUpgradeCost();
+      upgradeHyperBtn.textContent = `T+++ (${fmt(tbmmCost)})`;
+      upgradeHyperBtn.disabled = state.count < tbmmCost;
+
       const ibCost = getIdleUpgradeCost();
       upgradeIdleBtn.textContent = `I+ (${fmt(ibCost)})`;
       upgradeIdleBtn.disabled = state.count < ibCost;
@@ -389,6 +428,10 @@
       const ibmCost = getIdlePowerUpgradeCost();
       upgradeIdlePowerBtn.textContent = `I++ (${fmt(ibmCost)})`;
       upgradeIdlePowerBtn.disabled = state.count < ibmCost;
+
+      const ibmmCost = getIdleHyperUpgradeCost();
+      upgradeIdleHyperBtn.textContent = `I+++ (${fmt(ibmmCost)})`;
+      upgradeIdleHyperBtn.disabled = state.count < ibmmCost;
     }
 
     let lastSaveTime = 0;
@@ -525,6 +568,15 @@
       save();
     });
 
+    upgradeHyperBtn.addEventListener('click', () => {
+      const cost = getClickHyperUpgradeCost();
+      if (state.count < cost) return;
+      state.count -= cost;
+      state.upgrades.clickHyper += 1;
+      render();
+      save();
+    });
+
     upgradeIdleBtn.addEventListener('click', () => {
       const cost = getIdleUpgradeCost();
       if (state.count < cost) return;
@@ -539,6 +591,15 @@
       if (state.count < cost) return;
       state.count -= cost;
       state.upgrades.idlePower += 1;
+      render();
+      save();
+    });
+
+    upgradeIdleHyperBtn.addEventListener('click', () => {
+      const cost = getIdleHyperUpgradeCost();
+      if (state.count < cost) return;
+      state.count -= cost;
+      state.upgrades.idleHyper += 1;
       render();
       save();
     });

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'clicker-v17';
+const CACHE_NAME = 'clicker-v19';
 
 const PRECACHE = [
   './',

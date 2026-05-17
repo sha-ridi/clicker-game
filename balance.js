@@ -31,6 +31,17 @@ const BALANCE = {
     mult:   3,
   },
 
+  // Tier-3 additive upgrade ("T+++"). Each purchase adds (delta × clickPowerMult) to per-tap,
+  // running in parallel with T+ but with a much bigger base delta.
+  //   clickHyperDelta = delta × clickPowerMult   (so T++ retroactively boosts T+++ too)
+  //   perTap += clickHyperDelta × clickHyperLevel
+  //   cost(level) = ceil(base * mult ^ level)
+  clickHyperUpgrade: {
+    delta: 10,
+    base:  25000,
+    mult:  4,
+  },
+
   // "+N per sec" passive income upgrade ("Idle Boost", IB).
   //   effectiveDelta(idleLevel) = idleUpgrade.delta * idlePowerUpgrade.factor ^ idlePowerLevel
   //   cost(idleLevel) = ceil(base * mult ^ idleLevel)
@@ -45,6 +56,13 @@ const BALANCE = {
     factor: 1.5,
     base:   5000,
     mult:   3,
+  },
+
+  // Tier-3 additive upgrade for idle ("I+++"). Each purchase adds (delta × idlePowerMult) to per-sec.
+  idleHyperUpgrade: {
+    delta: 2,
+    base:  50000,
+    mult:  4,
   },
 
   // Hold-to-autotap: while the screen is held, an extra tap fires every N ms.
