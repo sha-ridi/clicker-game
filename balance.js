@@ -16,9 +16,9 @@ const BALANCE = {
   // mult tuning: 1.15 ~ Cookie Clicker pace (very gentle), 1.5 ~ medium,
   // 2.0 ~ each next costs double (steep, easy mental math).
   clickUpgrade: {
-    delta: 0.6,
+    delta: 0.5,
     base:  10,
-    mult:  3,
+    mult:  1.15,
   },
 
   // Meta-upgrade: multiplies `clickUpgrade.delta` by `factor` per level.
@@ -26,25 +26,25 @@ const BALANCE = {
   //   effectiveDelta(level) = clickUpgrade.delta * factor ^ level
   //   cost(level)           = ceil(base * mult ^ level)
   clickPowerUpgrade: {
-    factor: 1.1,
-    base:   50,
-    mult:   5,
+    factor: 1.5,
+    base:   500,
+    mult:   3,
   },
 
   // "+N per sec" passive income upgrade ("Idle Boost", IB).
   //   effectiveDelta(idleLevel) = idleUpgrade.delta * idlePowerUpgrade.factor ^ idlePowerLevel
   //   cost(idleLevel) = ceil(base * mult ^ idleLevel)
   idleUpgrade: {
-    delta: 0.05,
-    base:  10,
-    mult:  3,
+    delta: 0.1,
+    base:  50,
+    mult:  1.15,
   },
 
   // Meta-upgrade: multiplies `idleUpgrade.delta` by `factor` per level ("Idle Boost Multiplier", IBM).
   idlePowerUpgrade: {
-    factor: 1.1,
-    base:   100,
-    mult:   5,
+    factor: 1.5,
+    base:   5000,
+    mult:   3,
   },
 
   // Hold-to-autotap: while the screen is held, an extra tap fires every N ms.

@@ -122,7 +122,7 @@
       transition: border-color 0.12s ease, color 0.12s ease, background 0.12s ease, opacity 0.12s ease;
     }
 
-    .upgrade-button + .upgrade-button {
+    .upgrade-column .upgrade-button + .upgrade-button {
       margin-top: 6px;
     }
 
@@ -140,6 +140,56 @@
       background: var(--accent);
       border-color: var(--accent);
       color: var(--bg);
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(21, 22, 26, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+
+    .modal[hidden] {
+      display: none;
+    }
+
+    .modal-content {
+      border: 1px solid var(--muted);
+      background: var(--bg);
+      padding: 24px 32px;
+      text-align: center;
+    }
+
+    .modal-text {
+      color: var(--fg);
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .modal-buttons .upgrade-button {
+      width: 90px;
+      text-align: center;
+    }
+
+    .offline-gain {
+      font-size: 24px;
+      color: var(--fg);
+      margin-bottom: 4px;
+    }
+
+    .offline-time {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 18px;
     }
 
     #reset {
@@ -189,6 +239,26 @@
 
   <button id="reset">reset</button>
 
+  <div id="reset-modal" class="modal" hidden>
+    <div class="modal-content">
+      <div class="modal-text">reset progress?</div>
+      <div class="modal-buttons">
+        <button id="reset-yes" class="upgrade-button">yes</button>
+        <button id="reset-no" class="upgrade-button">no</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="offline-modal" class="modal" hidden>
+    <div class="modal-content">
+      <div class="offline-gain" id="offline-gain">+0</div>
+      <div class="offline-time" id="offline-time">offline 0s</div>
+      <div class="modal-buttons">
+        <button id="offline-ok" class="upgrade-button">ok</button>
+      </div>
+    </div>
+  </div>
+
   <script src="./balance.js"></script>
   <script>
     const SAVE_KEY = 'clicker-save';
@@ -210,6 +280,13 @@
     const upgradeIdleBtn   = document.getElementById('upgrade-idle');
     const upgradeIdlePowerBtn = document.getElementById('upgrade-idle-power');
     const resetBtn         = document.getElementById('reset');
+    const resetModal       = document.getElementById('reset-modal');
+    const resetYesBtn      = document.getElementById('reset-yes');
+    const resetNoBtn       = document.getElementById('reset-no');
+    const offlineModal     = document.getElementById('offline-modal');
+    const offlineGainEl    = document.getElementById('offline-gain');
+    const offlineTimeEl    = document.getElementById('offline-time');
+    const offlineOkBtn     = document.getElementById('offline-ok');
 
     function fmt(n) {
       if (n === 0) return '0';
@@ -337,8 +414,11 @@
           const dt = clampDt((Date.now() - data.lastTick) / 1000);
           const gain = getPerSec() * dt;
           if (gain > 0) {
-            state.count += gain;
-            if (dt > 5) showOfflineFloat(gain);
+            if (dt > 30) {
+              showOfflineModal(gain, dt);
+            } else {
+              state.count += gain;
+            }
           }
         }
       } catch (e) {
@@ -346,13 +426,39 @@
       }
     }
 
-    function showOfflineFloat(amount) {
-      requestAnimationFrame(() => {
+    function fmtDuration(seconds) {
+      const s = Math.floor(seconds);
+      if (s < 60) return `${s}s`;
+      const m = Math.floor(s / 60);
+      if (m < 60) {
+        const sec = s % 60;
+        return sec === 0 ? `${m}m` : `${m}m ${sec}s`;
+      }
+      const h = Math.floor(m / 60);
+      const min = m % 60;
+      return min === 0 ? `${h}h` : `${h}h ${min}m`;
+    }
+
+    let pendingOfflineGain = 0;
+
+    function showOfflineModal(gain, seconds) {
+      pendingOfflineGain = gain;
+      offlineGainEl.textContent = `+${fmt(gain)}`;
+      offlineTimeEl.textContent = `offline ${fmtDuration(seconds)}`;
+      offlineModal.hidden = false;
+    }
+
+    function closeOfflineModal() {
+      if (pendingOfflineGain > 0) {
+        const gain = pendingOfflineGain;
+        pendingOfflineGain = 0;
+        state.count += gain;
         const rect = display.getBoundingClientRect();
-        const x = rect.left + rect.width / 2;
-        const y = rect.top + rect.height / 2;
-        spawnFloat(`+${fmt(amount)}`, x, y);
-      });
+        spawnFloat(`+${fmt(gain)}`, rect.left + rect.width / 2, rect.top + rect.height / 2);
+        render();
+        save();
+      }
+      offlineModal.hidden = true;
     }
 
     function spawnFloat(text, x, y) {
@@ -438,9 +544,36 @@
     });
 
     resetBtn.addEventListener('click', () => {
+      resetModal.hidden = false;
+    });
+
+    resetYesBtn.addEventListener('click', () => {
       resetState();
       render();
       save();
+      resetModal.hidden = true;
+    });
+
+    resetNoBtn.addEventListener('click', () => {
+      resetModal.hidden = true;
+    });
+
+    resetModal.addEventListener('pointerdown', (e) => e.stopPropagation());
+    resetModal.addEventListener('click', (e) => {
+      if (e.target === resetModal) resetModal.hidden = true;
+    });
+
+    offlineOkBtn.addEventListener('click', closeOfflineModal);
+
+    offlineModal.addEventListener('pointerdown', (e) => e.stopPropagation());
+    offlineModal.addEventListener('click', (e) => {
+      if (e.target === offlineModal) closeOfflineModal();
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (!resetModal.hidden) resetModal.hidden = true;
+      if (!offlineModal.hidden) closeOfflineModal();
     });
 
     resetState();
