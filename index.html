@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f5f0e3">
+  <title>Clicker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f0e3;
+      --ink: #1a1612;
+      --muted: #8a7f6e;
+      --accent: #c24a3d;
+    }
+
+    html, body {
+      width: 100%;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    body {
+      font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+      overflow: hidden;
+    }
+
+    .label {
+      font-size: 12px;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .counter-wrap {
+      position: relative;
+      display: inline-block;
+      margin-bottom: 3rem;
+    }
+
+    #count {
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-style: italic;
+      font-size: clamp(96px, 22vw, 168px);
+      line-height: 1;
+      display: block;
+      min-width: 1.5em;
+      text-align: center;
+    }
+
+    #float-anchor {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 0;
+      height: 0;
+      pointer-events: none;
+    }
+
+    .float {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform: translate(-50%, -50%);
+      font-family: 'Instrument Serif', Georgia, serif;
+      font-style: italic;
+      font-size: 32px;
+      color: var(--accent);
+      pointer-events: none;
+      white-space: nowrap;
+      animation: floatUp 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+    }
+
+    @keyframes floatUp {
+      0%   { transform: translate(-50%, -50%) scale(0.8); opacity: 0; }
+      15%  { transform: translate(-50%, -80%) scale(1);   opacity: 1; }
+      100% { transform: translate(-50%, -200%) scale(1);  opacity: 0; }
+    }
+
+    #click {
+      font-family: 'Geist', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      padding: 18px 56px;
+      background: var(--ink);
+      color: var(--bg);
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform 0.08s ease, background 0.15s ease;
+    }
+
+    #click:active {
+      transform: scale(0.96);
+      background: var(--accent);
+    }
+
+    #reset {
+      margin-top: 1.25rem;
+      font-family: 'Geist', sans-serif;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 6px 12px;
+      transition: color 0.15s ease;
+    }
+
+    #reset:hover { color: var(--ink); }
+  </style>
+</head>
+<body>
+  <div style="text-align: center;">
+    <div class="label">Score</div>
+    <div class="counter-wrap">
+      <span id="count">0</span>
+      <span id="float-anchor"></span>
+    </div>
+  </div>
+
+  <button id="click">+1</button>
+  <button id="reset">Reset</button>
+
+  <script>
+    let count = 0;
+    const display = document.getElementById('count');
+    const anchor  = document.getElementById('float-anchor');
+
+    document.getElementById('click').addEventListener('click', () => {
+      count += 1;
+      display.textContent = count.toLocaleString();
+
+      const float = document.createElement('span');
+      float.className = 'float';
+      float.textContent = '+1';
+      anchor.appendChild(float);
+      setTimeout(() => float.remove(), 900);
+    });
+
+    document.getElementById('reset').addEventListener('click', () => {
+      count = 0;
+      display.textContent = '0';
+    });
+  </script>
+</body>
+</html>
