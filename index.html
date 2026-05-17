@@ -40,6 +40,7 @@
       -webkit-tap-highlight-color: transparent;
       -webkit-user-select: none;
       user-select: none;
+      -webkit-touch-callout: none;
       touch-action: manipulation;
       overflow: hidden;
     }
@@ -53,10 +54,33 @@
       margin-bottom: 8px;
     }
 
-    .counter-wrap {
-      position: relative;
-      display: inline-block;
+    .score-block {
+      text-align: center;
       margin-bottom: 3rem;
+    }
+
+    .upgrades {
+      display: flex;
+      flex-direction: row;
+      gap: 1.5rem;
+      align-items: flex-start;
+      margin-bottom: 1.25rem;
+    }
+
+    .upgrade-column {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+      text-align: center;
+    }
+
+    .stats {
+      margin-bottom: 1.25rem;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      line-height: 1.5;
     }
 
     #count {
@@ -69,19 +93,8 @@
       text-align: center;
     }
 
-    #float-anchor {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 0;
-      height: 0;
-      pointer-events: none;
-    }
-
     .float {
-      position: absolute;
-      left: 0;
-      top: 0;
+      position: fixed;
       transform: translate(-50%, -50%);
       font-family: 'Instrument Serif', Georgia, serif;
       font-style: italic;
@@ -90,6 +103,7 @@
       pointer-events: none;
       white-space: nowrap;
       animation: floatUp 0.9s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+      z-index: 10;
     }
 
     @keyframes floatUp {
@@ -98,23 +112,38 @@
       100% { transform: translate(-50%, -200%) scale(1);  opacity: 0; }
     }
 
-    #click {
+    .upgrade-button {
       font-family: 'Geist', sans-serif;
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 500;
-      letter-spacing: 0.06em;
-      padding: 18px 56px;
-      background: var(--ink);
-      color: var(--bg);
-      border: none;
+      letter-spacing: 0.02em;
+      padding: 14px 28px;
+      background: transparent;
+      color: var(--ink);
+      border: 1.5px solid var(--ink);
       border-radius: 999px;
       cursor: pointer;
-      transition: transform 0.08s ease, background 0.15s ease;
+      transition: transform 0.08s ease, opacity 0.15s ease, background 0.15s ease, color 0.15s ease;
     }
 
-    #click:active {
+    .upgrade-button + .upgrade-button {
+      margin-top: 0.5rem;
+    }
+
+    .upgrade-button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .upgrade-button:not(:disabled):hover {
+      background: var(--ink);
+      color: var(--bg);
+    }
+
+    .upgrade-button:not(:disabled):active {
       transform: scale(0.96);
-      background: var(--accent);
+      background: var(--ink);
+      color: var(--bg);
     }
 
     #reset {
@@ -136,68 +165,296 @@
   </style>
 </head>
 <body>
-  <div style="text-align: center;">
-    <div class="label">Score</div>
-    <div class="counter-wrap">
-      <span id="count">0</span>
-      <span id="float-anchor"></span>
-    </div>
+  <div class="score-block">
+    <span id="count">0</span>
   </div>
 
-  <button id="click">+1</button>
+  <div class="upgrades">
+    <section class="upgrade-column">
+      <div class="stats">
+        <div id="stat-per-tap">+1 per tap</div>
+        <div id="stat-tb">+0.6 per T+</div>
+        <div id="stat-tbm">×1 per T++</div>
+      </div>
+      <button id="upgrade-click" class="upgrade-button">T+ (10)</button>
+      <button id="upgrade-click-power" class="upgrade-button">T++ (50)</button>
+    </section>
+
+    <section class="upgrade-column">
+      <div class="stats">
+        <div id="stat-per-sec">+0 per sec</div>
+        <div id="stat-ib">+0.05 per I+</div>
+        <div id="stat-ibm">×1 per I++</div>
+      </div>
+      <button id="upgrade-idle" class="upgrade-button">I+ (10)</button>
+      <button id="upgrade-idle-power" class="upgrade-button">I++ (100)</button>
+    </section>
+  </div>
+
   <button id="reset">Reset</button>
 
+  <script src="./balance.js"></script>
   <script>
     const SAVE_KEY = 'clicker-save';
+    const TICK_MS = 100;
+    const SAVE_THROTTLE_MS = 1000;
+    const SCIENTIFIC_THRESHOLD = 1e6;
 
-    const state = {
-      count: 0,
-    };
+    const state = {};
 
-    const display = document.getElementById('count');
-    const anchor  = document.getElementById('float-anchor');
+    const display          = document.getElementById('count');
+    const statPerTap       = document.getElementById('stat-per-tap');
+    const statTB           = document.getElementById('stat-tb');
+    const statTBM          = document.getElementById('stat-tbm');
+    const statPerSec       = document.getElementById('stat-per-sec');
+    const statIB           = document.getElementById('stat-ib');
+    const statIBM          = document.getElementById('stat-ibm');
+    const upgradeBtn       = document.getElementById('upgrade-click');
+    const upgradePowerBtn  = document.getElementById('upgrade-click-power');
+    const upgradeIdleBtn   = document.getElementById('upgrade-idle');
+    const upgradeIdlePowerBtn = document.getElementById('upgrade-idle-power');
+    const resetBtn         = document.getElementById('reset');
+
+    function fmt(n) {
+      if (n === 0) return '0';
+      if (Math.abs(n) < SCIENTIFIC_THRESHOLD) {
+        return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+      }
+      return n.toExponential(2)
+        .replace('e+', 'e')
+        .replace(/\.?0+e/, 'e');
+    }
+
+    function getClickPowerMult() {
+      return Math.pow(BALANCE.clickPowerUpgrade.factor, state.upgrades.clickPower);
+    }
+
+    function getClickDelta() {
+      return BALANCE.clickUpgrade.delta * getClickPowerMult();
+    }
+
+    function getPerClick() {
+      return BALANCE.startingPerTap + getClickDelta() * state.upgrades.click;
+    }
+
+    function getClickUpgradeCost() {
+      const { base, mult } = BALANCE.clickUpgrade;
+      return Math.ceil(base * Math.pow(mult, state.upgrades.click));
+    }
+
+    function getClickPowerUpgradeCost() {
+      const { base, mult } = BALANCE.clickPowerUpgrade;
+      return Math.ceil(base * Math.pow(mult, state.upgrades.clickPower));
+    }
+
+    function getIdlePowerMult() {
+      return Math.pow(BALANCE.idlePowerUpgrade.factor, state.upgrades.idlePower);
+    }
+
+    function getIdleDelta() {
+      return BALANCE.idleUpgrade.delta * getIdlePowerMult();
+    }
+
+    function getPerSec() {
+      return BALANCE.startingPerSec + getIdleDelta() * state.upgrades.idle;
+    }
+
+    function getIdleUpgradeCost() {
+      const { base, mult } = BALANCE.idleUpgrade;
+      return Math.ceil(base * Math.pow(mult, state.upgrades.idle));
+    }
+
+    function getIdlePowerUpgradeCost() {
+      const { base, mult } = BALANCE.idlePowerUpgrade;
+      return Math.ceil(base * Math.pow(mult, state.upgrades.idlePower));
+    }
+
+    function resetState() {
+      state.count = 0;
+      state.upgrades = { click: 0, clickPower: 0, idle: 0, idlePower: 0 };
+      state.lastTick = Date.now();
+    }
+
+    function clampDt(seconds) {
+      const cap = BALANCE.maxOfflineHours * 3600;
+      return Math.max(0, Math.min(seconds, cap));
+    }
 
     function render() {
-      display.textContent = state.count.toLocaleString();
+      display.textContent = fmt(state.count);
+
+      statPerTap.textContent = `+${fmt(getPerClick())} per tap`;
+      statTB.textContent     = `+${fmt(getClickDelta())} per T+`;
+      statTBM.textContent    = `×${fmt(getClickPowerMult())} per T++`;
+
+      statPerSec.textContent = `+${fmt(getPerSec())} per sec`;
+      statIB.textContent     = `+${fmt(getIdleDelta())} per I+`;
+      statIBM.textContent    = `×${fmt(getIdlePowerMult())} per I++`;
+
+      const tbCost = getClickUpgradeCost();
+      upgradeBtn.textContent = `T+ (${fmt(tbCost)})`;
+      upgradeBtn.disabled = state.count < tbCost;
+
+      const tbmCost = getClickPowerUpgradeCost();
+      upgradePowerBtn.textContent = `T++ (${fmt(tbmCost)})`;
+      upgradePowerBtn.disabled = state.count < tbmCost;
+
+      const ibCost = getIdleUpgradeCost();
+      upgradeIdleBtn.textContent = `I+ (${fmt(ibCost)})`;
+      upgradeIdleBtn.disabled = state.count < ibCost;
+
+      const ibmCost = getIdlePowerUpgradeCost();
+      upgradeIdlePowerBtn.textContent = `I++ (${fmt(ibmCost)})`;
+      upgradeIdlePowerBtn.disabled = state.count < ibmCost;
     }
+
+    let lastSaveTime = 0;
 
     function save() {
       localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+      lastSaveTime = Date.now();
+    }
+
+    function saveThrottled() {
+      if (Date.now() - lastSaveTime >= SAVE_THROTTLE_MS) save();
     }
 
     function load() {
       const raw = localStorage.getItem(SAVE_KEY);
       if (!raw) return;
       try {
-        Object.assign(state, JSON.parse(raw));
+        const data = JSON.parse(raw);
+        if (typeof data.count === 'number') state.count = data.count;
+        if (data.upgrades) Object.assign(state.upgrades, data.upgrades);
+
+        if (typeof data.lastTick === 'number') {
+          const dt = clampDt((Date.now() - data.lastTick) / 1000);
+          const gain = getPerSec() * dt;
+          if (gain > 0) {
+            state.count += gain;
+            if (dt > 5) showOfflineFloat(gain);
+          }
+        }
       } catch (e) {
         console.warn('clicker: save is corrupted, starting fresh', e);
       }
     }
 
-    function spawnFloat(text) {
+    function showOfflineFloat(amount) {
+      requestAnimationFrame(() => {
+        const rect = display.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        spawnFloat(`+${fmt(amount)}`, x, y);
+      });
+    }
+
+    function spawnFloat(text, x, y) {
       const float = document.createElement('span');
       float.className = 'float';
       float.textContent = text;
-      anchor.appendChild(float);
+      float.style.left = `${x}px`;
+      float.style.top = `${y}px`;
+      document.body.appendChild(float);
       setTimeout(() => float.remove(), 900);
     }
 
-    document.getElementById('click').addEventListener('click', () => {
-      state.count += 1;
+    function doTap(x, y) {
+      const gain = getPerClick();
+      state.count += gain;
       render();
       save();
-      spawnFloat('+1');
+      spawnFloat(`+${fmt(gain)}`, x, y);
+    }
+
+    const holds = new Map(); // pointerId -> { x, y, timer }
+
+    function stopHold(pointerId) {
+      const h = holds.get(pointerId);
+      if (!h) return;
+      clearInterval(h.timer);
+      holds.delete(pointerId);
+    }
+
+    document.body.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      const h = { x: e.clientX, y: e.clientY, timer: null };
+      doTap(h.x, h.y);
+      h.timer = setInterval(() => doTap(h.x, h.y), BALANCE.holdTickMs);
+      holds.set(e.pointerId, h);
     });
 
-    document.getElementById('reset').addEventListener('click', () => {
-      state.count = 0;
+    document.body.addEventListener('pointermove', (e) => {
+      const h = holds.get(e.pointerId);
+      if (!h) return;
+      h.x = e.clientX;
+      h.y = e.clientY;
+    });
+
+    document.body.addEventListener('pointerup',     (e) => stopHold(e.pointerId));
+    document.body.addEventListener('pointercancel', (e) => stopHold(e.pointerId));
+    document.body.addEventListener('pointerleave',  (e) => stopHold(e.pointerId));
+
+    upgradeBtn.addEventListener('click', () => {
+      const cost = getClickUpgradeCost();
+      if (state.count < cost) return;
+      state.count -= cost;
+      state.upgrades.click += 1;
       render();
       save();
     });
 
+    upgradePowerBtn.addEventListener('click', () => {
+      const cost = getClickPowerUpgradeCost();
+      if (state.count < cost) return;
+      state.count -= cost;
+      state.upgrades.clickPower += 1;
+      render();
+      save();
+    });
+
+    upgradeIdleBtn.addEventListener('click', () => {
+      const cost = getIdleUpgradeCost();
+      if (state.count < cost) return;
+      state.count -= cost;
+      state.upgrades.idle += 1;
+      render();
+      save();
+    });
+
+    upgradeIdlePowerBtn.addEventListener('click', () => {
+      const cost = getIdlePowerUpgradeCost();
+      if (state.count < cost) return;
+      state.count -= cost;
+      state.upgrades.idlePower += 1;
+      render();
+      save();
+    });
+
+    resetBtn.addEventListener('click', () => {
+      resetState();
+      render();
+      save();
+    });
+
+    resetState();
     load();
     render();
+
+    function tick() {
+      const now = Date.now();
+      const dt = clampDt((now - state.lastTick) / 1000);
+      state.lastTick = now;
+
+      const perSec = getPerSec();
+      if (perSec > 0) {
+        state.count += perSec * dt;
+        render();
+        saveThrottled();
+      }
+    }
+
+    setInterval(tick, TICK_MS);
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {

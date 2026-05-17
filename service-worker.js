@@ -1,8 +1,9 @@
-const CACHE_NAME = 'clicker-v1';
+const CACHE_NAME = 'clicker-v8';
 
 const PRECACHE = [
   './',
   './index.html',
+  './balance.js',
   './manifest.webmanifest',
   './icon.svg',
 ];
