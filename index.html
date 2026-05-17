@@ -145,25 +145,56 @@
   <button id="reset">Reset</button>
 
   <script>
-    let count = 0;
+    const SAVE_KEY = 'clicker-save';
+
+    const state = {
+      count: 0,
+    };
+
     const display = document.getElementById('count');
     const anchor  = document.getElementById('float-anchor');
 
-    document.getElementById('click').addEventListener('click', () => {
-      count += 1;
-      display.textContent = count.toLocaleString();
+    function render() {
+      display.textContent = state.count.toLocaleString();
+    }
 
+    function save() {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    }
+
+    function load() {
+      const raw = localStorage.getItem(SAVE_KEY);
+      if (!raw) return;
+      try {
+        Object.assign(state, JSON.parse(raw));
+      } catch (e) {
+        console.warn('clicker: save is corrupted, starting fresh', e);
+      }
+    }
+
+    function spawnFloat(text) {
       const float = document.createElement('span');
       float.className = 'float';
-      float.textContent = '+1';
+      float.textContent = text;
       anchor.appendChild(float);
       setTimeout(() => float.remove(), 900);
+    }
+
+    document.getElementById('click').addEventListener('click', () => {
+      state.count += 1;
+      render();
+      save();
+      spawnFloat('+1');
     });
 
     document.getElementById('reset').addEventListener('click', () => {
-      count = 0;
-      display.textContent = '0';
+      state.count = 0;
+      render();
+      save();
     });
+
+    load();
+    render();
   </script>
 </body>
 </html>
