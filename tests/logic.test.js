@@ -44,3 +44,26 @@ test('mergeSave tolerates garbage input', () => {
   assert.strictEqual(G.mergeSave(null, 7).energy, 0);
   assert.strictEqual(G.mergeSave('nope', 7).energy, 0);
 });
+
+test('getPerTap base and upgrades (retroactive meta)', () => {
+  const s = G.resetState(0);
+  assert.strictEqual(G.getPerTap(s), 1);          // starting only
+  s.tap.powerLevel = 2;                            // +1 each → 1 + 1*2 = 3
+  assert.strictEqual(G.getPerTap(s), 3);
+  s.tap.metaLevel = 1;                             // delta doubles: 1 + (1*2)*2 = 5
+  assert.strictEqual(G.getPerTap(s), 5);
+});
+
+test('getPerSec sums unlocked stages only', () => {
+  const s = G.resetState(0);
+  assert.strictEqual(G.getPerSec(s), 0);          // only dead rock unlocked
+  s.stages[1].unlocked = true; s.stages[1].level = 3; // 3 * 0.2 = 0.6
+  s.stages[2].unlocked = true; s.stages[2].level = 2; // 2 * 1 = 2
+  assert.ok(Math.abs(G.getPerSec(s) - 2.6) < 1e-9);
+});
+
+test('globalMult scales both getters', () => {
+  const s = G.resetState(0);
+  s.tap.powerLevel = 1;
+  assert.strictEqual(G.getPerTap(s, 3), 6);       // (1 + 1) * 3
+});

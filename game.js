@@ -34,7 +34,25 @@
     return state;
   }
 
-  const api = { resetState, mergeSave };
+  function stageContribution(i, level) {
+    return level * BALANCE.stages[i].perSecPerLevel;
+  }
+
+  function getPerTap(state, mult = BALANCE.globalMult) {
+    const { powerLevel, metaLevel } = state.tap;
+    const delta = BALANCE.tap.powerDelta * Math.pow(BALANCE.tap.metaFactor, metaLevel);
+    return (BALANCE.startingPerTap + delta * powerLevel) * mult;
+  }
+
+  function getPerSec(state, mult = BALANCE.globalMult) {
+    let sum = 0;
+    for (let i = 0; i < state.stages.length; i++) {
+      if (state.stages[i].unlocked) sum += stageContribution(i, state.stages[i].level);
+    }
+    return sum * mult;
+  }
+
+  const api = { resetState, mergeSave, stageContribution, getPerTap, getPerSec };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else global.GAME = api;
