@@ -131,3 +131,35 @@ test('fmtCount always two decimals below threshold', () => {
   assert.strictEqual(G.fmtCount(1), '1.00');
   assert.strictEqual(G.fmtCount(1e6), '1.00e6');
 });
+
+test('planetLayers reflects progression', () => {
+  const s = G.resetState(0);
+  let L = G.planetLayers(s);
+  assert.strictEqual(L.highest, 0);
+  assert.match(L.land, /#c2c0ba/);        // dead grey
+  assert.strictEqual(L.cloudsBg, 'none');
+
+  s.stages[1].unlocked = true; s.stages[1].level = 2;   // oceans
+  L = G.planetLayers(s);
+  assert.strictEqual(L.highest, 1);
+  assert.match(L.land, /#cabfa9/);        // barren tan
+  assert.match(L.surfBg, /#8fd0ec/);      // water present
+
+  s.stages[2].unlocked = true; s.stages[2].level = 1;   // meadows
+  L = G.planetLayers(s);
+  assert.match(L.land, /#a9e0af/);        // mint green
+
+  s.stages[5].unlocked = true; s.stages[5].level = 1;   // atmosphere
+  L = G.planetLayers(s);
+  assert.strictEqual(L.highest, 5);
+  assert.notStrictEqual(L.cloudsBg, 'none');
+});
+
+test('planetLayers caps feature counts', () => {
+  const s = G.resetState(0);
+  s.stages[1].unlocked = true; s.stages[1].level = 9999;
+  const L = G.planetLayers(s);
+  // water layers are comma-separated; count commas+1, capped at 6
+  const count = L.surfBg.split('),').length;
+  assert.ok(count <= 6);
+});
