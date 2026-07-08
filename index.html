@@ -269,6 +269,84 @@
     };
 
     render();
+
+    // ---- save / load ----
+    let lastSaveTime = 0;
+    function realSave() {
+      try { localStorage.setItem(B.saveKey, JSON.stringify(state)); } catch (e) {}
+      lastSaveTime = Date.now();
+    }
+    function saveThrottled() {
+      if (Date.now() - lastSaveTime >= B.saveThrottleMs) realSave();
+    }
+    save = realSave;                 // replace the placeholder from Task 10
+
+    // ---- offline claim (deferred) ----
+    let pendingOfflineGain = 0;
+    const offlineModal = document.getElementById('offline-modal');
+    const offlineText = document.getElementById('offline-text');
+    function claimOffline() {
+      const g = pendingOfflineGain;
+      pendingOfflineGain = 0;        // zero BEFORE mutating (double-credit guard)
+      if (g > 0) {
+        state.energy += g;
+        const r = el.planet.getBoundingClientRect();
+        spawnFloat('+' + G.fmt(g), r.left + r.width / 2, r.top + r.height / 2);
+      }
+      offlineModal.hidden = true;
+      render(); realSave();
+    }
+    document.getElementById('offline-ok').addEventListener('click', claimOffline);
+    offlineModal.addEventListener('pointerdown', (e) => {
+      if (e.target === offlineModal) claimOffline();
+    });
+
+    function load() {
+      let saved = null;
+      try { saved = JSON.parse(localStorage.getItem(B.saveKey)); } catch (e) {}
+      const now = Date.now();
+      state = G.mergeSave(saved, now);
+      window.__game.state = state;
+
+      if (saved) {
+        const { dtSec, gain } = G.offlineGain(state, now);
+        if (dtSec > B.offlineModalMinSec && gain > 0) {
+          pendingOfflineGain = gain;
+          const mins = Math.floor(dtSec / 60);
+          offlineText.textContent =
+            `Пока тебя не было (${mins} мин), планета накопила +${G.fmt(gain)} энергии.`;
+          offlineModal.hidden = false;
+        } else if (gain > 0) {
+          state.energy += gain;      // tiny gap → silent
+        }
+      }
+      state.lastTick = now;
+    }
+
+    // ---- tick ----
+    function tick() {
+      const now = Date.now();
+      const dt = G.clampDt((now - state.lastTick) / 1000);
+      state.lastTick = now;
+      if (dt > 0) state.energy += G.getPerSec(state) * dt;
+      render();
+      saveThrottled();
+    }
+
+    // ---- reset ----
+    const resetModal = document.getElementById('reset-modal');
+    document.getElementById('reset-btn').addEventListener('click', () => { resetModal.hidden = false; });
+    document.getElementById('reset-no').addEventListener('click', () => { resetModal.hidden = true; });
+    document.getElementById('reset-yes').addEventListener('click', () => {
+      state = G.resetState();
+      window.__game.state = state;
+      resetModal.hidden = true;
+      render(); realSave();
+    });
+    resetModal.addEventListener('pointerdown', (e) => { if (e.target === resetModal) resetModal.hidden = true; });
+
+    load();                          // load replaces resetState boot
+    setInterval(tick, B.tickMs);
   })();
   </script>
 </body>
