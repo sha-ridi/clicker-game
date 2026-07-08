@@ -246,10 +246,25 @@
       save();
     }
 
-    el.planet.addEventListener('pointerdown', (e) => {
+    const holdTimers = new Map();
+    function startHold(e) {
       e.preventDefault();
-      doTap(e.clientX, e.clientY);
-    });
+      doTap(e.clientX, e.clientY);   // immediate tap
+      const id = e.pointerId;
+      const timer = setInterval(() => {
+        const r = el.planet.getBoundingClientRect();
+        doTap(r.left + r.width / 2, r.top + r.height / 2);
+      }, B.holdTickMs);
+      holdTimers.set(id, timer);
+    }
+    function endHold(e) {
+      const t = holdTimers.get(e.pointerId);
+      if (t) { clearInterval(t); holdTimers.delete(e.pointerId); }
+    }
+    el.planet.addEventListener('pointerdown', startHold);
+    el.planet.addEventListener('pointerup', endHold);
+    el.planet.addEventListener('pointercancel', endHold);
+    el.planet.addEventListener('pointerleave', endHold);
 
     el.tapPowerBtn.addEventListener('click', () => { if (G.buyTapPower(state)) { render(); save(); } });
     el.tapMetaBtn.addEventListener('click', () => { if (G.buyTapMeta(state)) { render(); save(); } });
