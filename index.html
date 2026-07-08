@@ -3,10 +3,158 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#eaf6ff">
   <title>Terraform</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --sky-top:#eaf6ff; --sky-bot:#d5e7fb;
+      --ink:#4a4560; --ink-soft:#6b6685; --card:#ffffffcc; --card-line:#00000012;
+      --accent:#79c89f; --accent-ink:#2f6f5c;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;height:100%}
+    body{
+      font-family:'Quicksand',ui-rounded,system-ui,sans-serif;
+      color:var(--ink);
+      background:linear-gradient(165deg,var(--sky-top),var(--sky-bot));
+      -webkit-tap-highlight-color:transparent;
+      -webkit-touch-callout:none; user-select:none;
+      touch-action:manipulation;
+      display:flex; flex-direction:column; align-items:center;
+      min-height:100%; padding:env(safe-area-inset-top) 16px 24px;
+    }
+    /* counter */
+    .counter{margin-top:18px;text-align:center}
+    .counter .val{font-size:clamp(40px,11vw,72px);font-weight:700;line-height:1;letter-spacing:-.02em}
+    .counter .unit{font-size:14px;font-weight:600;color:var(--ink-soft);margin-top:4px;text-transform:lowercase}
+    .rates{font-size:13px;color:var(--ink-soft);margin-top:6px}
+    .rates b{color:var(--accent-ink);font-weight:600}
+
+    /* planet */
+    .planet-wrap{margin:20px 0 24px;display:flex;align-items:center;justify-content:center}
+    .planet{
+      width:min(56vw,220px);height:min(56vw,220px);border-radius:50%;
+      position:relative;overflow:hidden;cursor:pointer;
+      box-shadow:inset -16px -22px 42px rgba(20,55,60,.42),0 0 40px rgba(170,235,215,.45);
+      transition:transform 90ms ease-out;
+      background:radial-gradient(circle at 33% 27%,#dcf5d3,#a9e0af 46%,#79c89f 74%,#4f9d8a 100%);
+    }
+    .planet.tapped{transform:scale(.94)}
+    .planet .surf,.planet .clouds{position:absolute;top:0;left:0;height:100%;width:200%;background-repeat:repeat-x}
+    .planet .surf{animation:spin 16s linear infinite}
+    .planet .clouds{animation:spin 10s linear infinite;opacity:.85}
+    .planet .shade{position:absolute;inset:0;border-radius:50%;box-shadow:inset -14px -18px 34px rgba(20,50,55,.42);pointer-events:none}
+    @keyframes spin{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+    /* floats */
+    .float{position:fixed;pointer-events:none;font-weight:700;color:var(--accent-ink);
+      font-size:20px;animation:floatUp 900ms ease-out forwards;z-index:5}
+    @keyframes floatUp{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-46px)}}
+
+    /* panel */
+    .panel{width:100%;max-width:440px;display:flex;flex-direction:column;gap:10px}
+    .card{background:var(--card);border:1px solid var(--card-line);border-radius:16px;padding:12px 14px;
+      backdrop-filter:blur(6px)}
+    .card h3{margin:0 0 8px;font-size:13px;font-weight:700;color:var(--ink-soft);text-transform:lowercase;letter-spacing:.04em}
+    .buy{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;
+      border:none;border-radius:12px;padding:11px 14px;margin-top:8px;
+      font-family:inherit;font-size:15px;font-weight:600;color:var(--ink);
+      background:#ffffff;box-shadow:0 1px 0 #00000010;cursor:pointer;transition:transform 80ms,filter 80ms}
+    .buy:first-of-type{margin-top:0}
+    .buy:active{transform:translateY(1px)}
+    .buy:disabled{opacity:.45;cursor:default}
+    .buy .cost{font-size:13px;font-weight:600;color:var(--accent-ink)}
+    .buy .meta{font-size:12px;color:var(--ink-soft);font-weight:500}
+    .stage-row.locked{opacity:.5}
+    .stage-row .name{display:flex;align-items:center;gap:8px}
+    .stage-row .lv{font-size:12px;color:var(--ink-soft);font-weight:600}
+
+    .reset{margin-top:16px;background:none;border:none;color:var(--ink-soft);font-family:inherit;
+      font-size:13px;text-decoration:underline;cursor:pointer}
+
+    /* modals */
+    .modal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+      background:rgba(40,50,70,.5);z-index:20;padding:24px}
+    .modal[hidden]{display:none}
+    .modal-content{background:#fff;border-radius:20px;padding:22px 20px;max-width:320px;width:100%;text-align:center;
+      box-shadow:0 20px 60px rgba(30,40,60,.3)}
+    .modal-content h2{margin:0 0 8px;font-size:18px}
+    .modal-content p{margin:0 0 16px;color:var(--ink-soft);font-size:14px;line-height:1.4}
+    .modal-actions{display:flex;gap:10px}
+    .modal-actions button{flex:1;border:none;border-radius:12px;padding:11px;font-family:inherit;
+      font-size:15px;font-weight:600;cursor:pointer}
+    .btn-primary{background:var(--accent);color:#fff}
+    .btn-ghost{background:#eef1f5;color:var(--ink)}
+  </style>
 </head>
 <body>
+  <div class="counter">
+    <div class="val" id="energy">0.00</div>
+    <div class="unit">энергия</div>
+    <div class="rates">за тап <b id="per-tap">1</b> · в сек <b id="per-sec">0</b></div>
+  </div>
+
+  <div class="planet-wrap">
+    <div class="planet" id="planet">
+      <div class="surf" id="surf"></div>
+      <div class="clouds" id="clouds"></div>
+      <div class="shade"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="card">
+      <h3>тап</h3>
+      <button class="buy" id="tap-power-btn">
+        <span>сила тапа</span>
+        <span class="cost" id="tap-power-cost">15</span>
+      </button>
+      <button class="buy" id="tap-meta-btn">
+        <span>множитель тапа</span>
+        <span class="cost" id="tap-meta-cost">500</span>
+      </button>
+    </div>
+
+    <div class="card">
+      <h3>терраформинг</h3>
+      <div id="stages"></div>
+    </div>
+
+    <button class="reset" id="reset-btn">сбросить прогресс</button>
+  </div>
+
+  <!-- reset confirmation -->
+  <div class="modal" id="reset-modal" hidden>
+    <div class="modal-content">
+      <h2>Сбросить прогресс?</h2>
+      <p>Планета вернётся к мёртвому камню. Это нельзя отменить.</p>
+      <div class="modal-actions">
+        <button class="btn-ghost" id="reset-no">нет</button>
+        <button class="btn-primary" id="reset-yes">да</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- offline gain -->
+  <div class="modal" id="offline-modal" hidden>
+    <div class="modal-content">
+      <h2>С возвращением!</h2>
+      <p id="offline-text">Пока тебя не было, планета накопила энергию.</p>
+      <div class="modal-actions">
+        <button class="btn-primary" id="offline-ok">забрать</button>
+      </div>
+    </div>
+  </div>
+
   <script src="./balance.js"></script>
   <script src="./game.js"></script>
+  <!-- bootstrap script added in Task 9 -->
 </body>
 </html>
