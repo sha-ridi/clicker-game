@@ -155,6 +155,80 @@
 
   <script src="./balance.js"></script>
   <script src="./game.js"></script>
-  <!-- bootstrap script added in Task 9 -->
+  <script>
+  (function () {
+    const G = window.GAME, B = window.BALANCE;
+    const $ = (id) => document.getElementById(id);
+    const el = {
+      energy: $('energy'), perTap: $('per-tap'), perSec: $('per-sec'),
+      planet: $('planet'), surf: $('surf'), clouds: $('clouds'),
+      tapPowerBtn: $('tap-power-btn'), tapPowerCost: $('tap-power-cost'),
+      tapMetaBtn: $('tap-meta-btn'), tapMetaCost: $('tap-meta-cost'),
+      stages: $('stages'),
+    };
+
+    let state = G.resetState();
+
+    // build the 5 purchasable stage rows once (indices 1..5)
+    const stageEls = [];
+    for (let i = 1; i < B.stages.length; i++) {
+      const row = document.createElement('button');
+      row.className = 'buy stage-row';
+      row.dataset.i = i;
+      row.innerHTML =
+        `<span class="name">${B.stages[i].name} <span class="lv"></span></span>` +
+        `<span class="cost"></span>`;
+      el.stages.appendChild(row);
+      stageEls[i] = { row, lv: row.querySelector('.lv'), cost: row.querySelector('.cost') };
+    }
+
+    function renderPlanet() {
+      const L = G.planetLayers(state);
+      el.planet.style.background = L.land;
+      el.planet.style.boxShadow = 'inset -16px -22px 42px rgba(20,55,60,.42),' + L.glow;
+      el.surf.style.backgroundImage = L.surfBg;
+      el.clouds.style.backgroundImage = L.cloudsBg;
+    }
+
+    function render() {
+      el.energy.textContent = G.fmtCount(state.energy);
+      el.perTap.textContent = G.fmt(G.getPerTap(state));
+      el.perSec.textContent = G.fmt(G.getPerSec(state));
+
+      const tpCost = G.tapPowerCost(state.tap.powerLevel);
+      el.tapPowerCost.textContent = G.fmt(tpCost);
+      el.tapPowerBtn.disabled = state.energy < tpCost;
+
+      const tmCost = G.tapMetaCost(state.tap.metaLevel);
+      el.tapMetaCost.textContent = G.fmt(tmCost);
+      el.tapMetaBtn.disabled = state.energy < tmCost;
+
+      for (let i = 1; i < B.stages.length; i++) {
+        const s = state.stages[i], ui = stageEls[i];
+        const prevUnlocked = state.stages[i - 1].unlocked;
+        if (!s.unlocked) {
+          ui.row.classList.toggle('locked', !prevUnlocked);
+          ui.lv.textContent = '';
+          const cost = G.stageUnlockCost(i);
+          ui.cost.textContent = 'открыть · ' + G.fmt(cost);
+          ui.row.disabled = !prevUnlocked || state.energy < cost;
+        } else {
+          ui.row.classList.remove('locked');
+          ui.lv.textContent = 'ур. ' + s.level;
+          const cost = G.stageLevelCost(i, s.level);
+          ui.cost.textContent = G.fmt(cost);
+          ui.row.disabled = state.energy < cost;
+        }
+      }
+
+      renderPlanet();
+    }
+
+    // expose for later tasks (handlers, tick, save)
+    window.__game = { get state() { return state; }, set state(v) { state = v; }, render };
+
+    render();
+  })();
+  </script>
 </body>
 </html>
