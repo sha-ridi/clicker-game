@@ -67,3 +67,39 @@ test('globalMult scales both getters', () => {
   s.tap.powerLevel = 1;
   assert.strictEqual(G.getPerTap(s, 3), 6);       // (1 + 1) * 3
 });
+
+test('cost growth is monotonic', () => {
+  assert.ok(G.tapPowerCost(1) > G.tapPowerCost(0));
+  assert.ok(G.stageLevelCost(1, 2) > G.stageLevelCost(1, 1));
+  assert.strictEqual(G.stageUnlockCost(1), 50);
+});
+
+test('buyTapPower respects affordability', () => {
+  const s = G.resetState(0);
+  assert.strictEqual(G.buyTapPower(s), false);   // 0 energy
+  s.energy = 1000;
+  assert.strictEqual(G.buyTapPower(s), true);
+  assert.strictEqual(s.tap.powerLevel, 1);
+  assert.strictEqual(s.energy, 1000 - G.tapPowerCost(0));
+});
+
+test('stage unlock is gated and grants level 1', () => {
+  const s = G.resetState(0);
+  s.energy = 1e9;
+  assert.strictEqual(G.buyStageUnlock(s, 2), false); // stage 1 not unlocked yet
+  assert.strictEqual(G.buyStageUnlock(s, 1), true);
+  assert.strictEqual(s.stages[1].unlocked, true);
+  assert.strictEqual(s.stages[1].level, 1);           // immediate contribution
+  assert.strictEqual(G.buyStageUnlock(s, 1), false);  // already unlocked
+  assert.strictEqual(G.buyStageUnlock(s, 2), true);   // now allowed
+});
+
+test('stage level requires unlock, stage 0 never buyable', () => {
+  const s = G.resetState(0);
+  s.energy = 1e9;
+  assert.strictEqual(G.buyStageLevel(s, 1), false);   // locked
+  assert.strictEqual(G.buyStageLevel(s, 0), false);   // dead rock
+  G.buyStageUnlock(s, 1);
+  assert.strictEqual(G.buyStageLevel(s, 1), true);
+  assert.strictEqual(s.stages[1].level, 2);
+});
