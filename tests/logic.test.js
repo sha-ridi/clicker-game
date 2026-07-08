@@ -103,3 +103,31 @@ test('stage level requires unlock, stage 0 never buyable', () => {
   assert.strictEqual(G.buyStageLevel(s, 1), true);
   assert.strictEqual(s.stages[1].level, 2);
 });
+
+test('clampDt caps and floors', () => {
+  assert.strictEqual(G.clampDt(-5), 0);
+  assert.strictEqual(G.clampDt(10), 10);
+  assert.strictEqual(G.clampDt(1e9), 12 * 3600);   // maxOfflineHours cap
+});
+
+test('offlineGain uses clamped dt and perSec', () => {
+  const s = G.resetState(0);
+  s.stages[1].unlocked = true; s.stages[1].level = 5; // perSec = 1.0
+  const { dtSec, gain } = G.offlineGain(s, 10000);    // 10s
+  assert.strictEqual(dtSec, 10);
+  assert.ok(Math.abs(gain - 10) < 1e-9);
+});
+
+test('fmt formatting', () => {
+  assert.strictEqual(G.fmt(5), '5');
+  assert.strictEqual(G.fmt(5.5), '5.5');
+  assert.strictEqual(G.fmt(5.05), '5.05');
+  assert.strictEqual(G.fmt(1e6), '1e6');
+  assert.strictEqual(G.fmt(1.23e9), '1.23e9');
+});
+
+test('fmtCount always two decimals below threshold', () => {
+  assert.strictEqual(G.fmtCount(5.5), '5.50');
+  assert.strictEqual(G.fmtCount(1), '1.00');
+  assert.strictEqual(G.fmtCount(1e6), '1.00e6');
+});

@@ -107,10 +107,36 @@
     return true;
   }
 
+  function clampDt(dtSec) {
+    if (dtSec < 0) return 0;
+    return Math.min(dtSec, BALANCE.maxOfflineHours * 3600);
+  }
+
+  function offlineGain(state, now) {
+    const dtSec = clampDt((now - state.lastTick) / 1000);
+    return { dtSec, gain: getPerSec(state) * dtSec };
+  }
+
+  function fmt(n) {
+    if (Math.abs(n) >= BALANCE.scientificThreshold) {
+      return n.toExponential(2).replace(/\.?0+e/, 'e').replace('e+', 'e');
+    }
+    const r = Math.round(n * 100) / 100;
+    return Number.isInteger(r) ? String(r) : r.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  function fmtCount(n) {
+    if (Math.abs(n) >= BALANCE.scientificThreshold) {
+      return n.toExponential(2).replace('e+', 'e');
+    }
+    return n.toFixed(2);
+  }
+
   const api = {
     resetState, mergeSave, stageContribution, getPerTap, getPerSec,
     tapPowerCost, tapMetaCost, stageUnlockCost, stageLevelCost,
     buyTapPower, buyTapMeta, buyStageUnlock, buyStageLevel,
+    clampDt, offlineGain, fmt, fmtCount,
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
