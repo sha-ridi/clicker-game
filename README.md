@@ -1,2 +1,9 @@
-# Clicker Game
-Simple clicker game made for fun =)
+# Terraform — clicker
+
+Пастельный мультяшный кликер: тапай мёртвую планету, копи энергию, терраформируй её от голого камня до цветущего мира.
+
+Играть: https://sha-ridi.github.io/clicker-game/
+
+- Vanilla HTML/CSS/JS, без билда и зависимостей.
+- Логика — `game.js` (тестируется через `node --test`), числа — `balance.js`, DOM — `index.html`.
+- PWA: ставится на домашний экран, работает офлайн.
