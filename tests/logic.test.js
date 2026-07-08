@@ -16,3 +16,31 @@ test('BALANCE has 6 stages named correctly, stage 0 is free', () => {
   assert.strictEqual(B.globalMult, 1);
   assert.strictEqual(B.saveKey, 'terraform-save');
 });
+
+test('resetState default shape', () => {
+  const s = G.resetState(1000);
+  assert.strictEqual(s.energy, 0);
+  assert.deepStrictEqual(s.tap, { powerLevel: 0, metaLevel: 0 });
+  assert.strictEqual(s.stages.length, 6);
+  assert.strictEqual(s.stages[0].unlocked, true);
+  assert.strictEqual(s.stages[1].unlocked, false);
+  assert.strictEqual(s.lastTick, 1000);
+  assert.strictEqual(s.meta.rebirths, 0);
+});
+
+test('mergeSave layers saved fields over defaults', () => {
+  const saved = { energy: 42, tap: { powerLevel: 3 }, stages: [{}, { unlocked: true, level: 2 }] };
+  const s = G.mergeSave(saved, 5000);
+  assert.strictEqual(s.energy, 42);
+  assert.strictEqual(s.tap.powerLevel, 3);
+  assert.strictEqual(s.tap.metaLevel, 0);        // missing → default
+  assert.strictEqual(s.stages[1].unlocked, true);
+  assert.strictEqual(s.stages[1].level, 2);
+  assert.strictEqual(s.stages[2].unlocked, false); // beyond saved array → default
+  assert.strictEqual(s.lastTick, 5000);            // missing lastTick → now
+});
+
+test('mergeSave tolerates garbage input', () => {
+  assert.strictEqual(G.mergeSave(null, 7).energy, 0);
+  assert.strictEqual(G.mergeSave('nope', 7).energy, 0);
+});
