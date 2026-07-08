@@ -224,8 +224,49 @@
       renderPlanet();
     }
 
+    function spawnFloat(text, x, y) {
+      const f = document.createElement('div');
+      f.className = 'float';
+      f.textContent = text;
+      f.style.left = x + 'px';
+      f.style.top = y + 'px';
+      document.body.appendChild(f);
+      setTimeout(() => f.remove(), 900);
+    }
+
+    let save = function () {};  // replaced in Task 11
+
+    function doTap(x, y) {
+      const gain = G.getPerTap(state);
+      state.energy += gain;
+      spawnFloat('+' + G.fmt(gain), x, y);
+      el.planet.classList.add('tapped');
+      setTimeout(() => el.planet.classList.remove('tapped'), 90);
+      render();
+      save();
+    }
+
+    el.planet.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      doTap(e.clientX, e.clientY);
+    });
+
+    el.tapPowerBtn.addEventListener('click', () => { if (G.buyTapPower(state)) { render(); save(); } });
+    el.tapMetaBtn.addEventListener('click', () => { if (G.buyTapMeta(state)) { render(); save(); } });
+
+    el.stages.addEventListener('click', (e) => {
+      const row = e.target.closest('.stage-row');
+      if (!row) return;
+      const i = Number(row.dataset.i);
+      const ok = state.stages[i].unlocked ? G.buyStageLevel(state, i) : G.buyStageUnlock(state, i);
+      if (ok) { render(); save(); }
+    });
+
     // expose for later tasks (handlers, tick, save)
-    window.__game = { get state() { return state; }, set state(v) { state = v; }, render };
+    window.__game = {
+      get state() { return state; }, set state(v) { state = v; },
+      render, setSave(fn) { save = fn; },
+    };
 
     render();
   })();
