@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "static",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["-e", "const h=require('http'),f=require('fs'),p=require('path');h.createServer((q,s)=>{let u=q.url==='/'?'/index.html':decodeURIComponent(q.url.split('?')[0]);f.readFile('.'+u,(e,d)=>{if(e){s.statusCode=404;return s.end('not found')}const t={'.html':'text/html','.js':'text/javascript','.svg':'image/svg+xml','.webmanifest':'application/manifest+json','.json':'application/json','.css':'text/css'}[p.extname(u)]||'text/plain';s.setHeader('content-type',t);s.end(d)})}).listen(8123,()=>console.log('static server on http://localhost:8123'))"],
+      "port": 8123
+    }
+  ]
+}
